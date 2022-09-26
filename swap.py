@@ -10,7 +10,7 @@ def getFace():
     print("started")
 
     #live video
-    cap= cv2.VideoCapture(0)
+    cap= cv2.VideoCapture('V1.mp4')
     face_locations = []
 
     frontalFaceDetector = dlib.get_frontal_face_detector()
