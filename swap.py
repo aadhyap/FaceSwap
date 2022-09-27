@@ -10,7 +10,7 @@ def getFace():
     print("started")
 
     #live video
-    cap= cv2.VideoCapture(0)
+    cap= cv2.VideoCapture("face.mp4")
     face_locations = []
 
     frontalFaceDetector = dlib.get_frontal_face_detector()
@@ -48,6 +48,8 @@ def getFace():
         #cv2.waitKey(1000)
         #gray=cv2.cvtColor(rgb_frame, cv2.COLOR_BGR2GRAY)
         rgb_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_BGR2RGB)
+        print("RGB FRAME _____________")
+        print(rgb_frame)
 
         #gray = rgb_frame
 
@@ -66,53 +68,75 @@ def getFace():
           #cv2.rectangle(rgb_frame, (x1,y1), (x2,y2),(0,255,0),3)
         #cv2_imshow(img)
 
+
+
         faceLandmarkDetector = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
         landmarks = faceLandmarkDetector(rgb_frame, face)
 
+        points = []
 
 
             # jaw, ear to ear
-        overlay(0, 17, landmarks, rgb_frame)
+        points += overlay(0, 17, landmarks, rgb_frame)
      
         # left eyebrow
-        overlay(17, 22, landmarks, rgb_frame)
+        points += overlay(17, 22, landmarks, rgb_frame)
      
         # right eyebrow
-        overlay(22, 27, landmarks, rgb_frame)
+        points += overlay(22, 27, landmarks, rgb_frame)
      
         # line on top of nose
-        overlay(27, 31, landmarks, rgb_frame)
+        points += overlay(27, 31, landmarks, rgb_frame)
      
         # bottom part of the nose
-        overlay(31, 36, landmarks, rgb_frame)
+        points += overlay(31, 36, landmarks, rgb_frame)
      
         # left eye
-        overlay(36, 42, landmarks, rgb_frame)
+        points += overlay(36, 42, landmarks, rgb_frame)
      
         # right eye
-        overlay(42, 48, landmarks, rgb_frame)
+        points += overlay(42, 48, landmarks, rgb_frame)
      
         # outer part of the lips
-        overlay(48, 60, landmarks, rgb_frame)
+        points += overlay(48, 60, landmarks, rgb_frame)
      
         # inner part of the lips
-        overlay(60, 68, landmarks, rgb_frame)
+        points += overlay(60, 68, landmarks, rgb_frame)
             
         
-        cv2.imshow("landmarks", rgb_frame)
+        #cv2.imshow("landmarks", rgb_frame)
 
-        cv2.waitKey(100)
+        #cv2.waitKey(100)
+
+        print("POINTS")
+
+        print(points)
+
+
+
+        image = rgb_frame
+        size = image.shape
+        rect = (0, 0, size[1], size[0])
+        subdiv = cv2.Subdiv2D(rect);
+
+        triangle(rect, points, subdiv)
+        drawTriangles(rgb_frame, subdiv)
 
 
 
 
 
 def overlay(startpoint, endpoint, landmarks, gray):
+    points = []
+  
     for n in range(startpoint,endpoint):
    
         x=landmarks.part(n).x
         y=landmarks.part(n).y
+        points.append([x,y])
+     
         cv2.circle(gray, (x, y), 4, (0, 0, 255), -1)
+
         # Green color in BGR
         color = (0, 255, 0)
              
@@ -122,9 +146,93 @@ def overlay(startpoint, endpoint, landmarks, gray):
         end_point = (x,y)
 
         if(n != startpoint):
-
             gray = cv2.line(gray, start_point, end_point, color, thickness)
         start_point = (x, y)
+    return points
+
+   
+
+def triangle(image, fiducials, subdiv):
+    
+    for points in fiducials:
+        subdiv.insert((points[0], points[1])) #points add to subdiv
+
+    
+    #3 pairs (3 points)
+    triangles = subdiv.getTriangleList() #from fiducial points get allall the traingels
+
+    triangle = []
+    allpoints = []
+
+
+
+
+
+    for p in triangles:
+    
+
+        pt1 = [p[0], p[1]]
+        pt2 = [p[2], p[3]]
+        pt3 = [p[4], p[5]]
+
+        allpoints.append(pt1)
+        allpoints.append(pt2)
+        allpoints.append(pt3)
+
+        if circumcircle(image, pt1) and circumcircle(image, pt2) and circumcircle(image, pt3):
+            
+            ind = []
+            for j in range(0, 3):
+                for k in range(0, len(fiducials)):
+                    if abs(allpoints[j][0] - fiducials[k][0]) < 1.0 and abs(allpoints[j][1] - fiducials[k][1]) < 1.0:
+                        ind.append(k)
+            if len(ind) == 3:
+                triangle.append((ind[0], ind[1], ind[2]))
+
+     
+    
+
+    return triangle
+#check the circumcircle of the three point triangle if it has  another point
+
+def circumcircle(rect, point): 
+    if point[0] < rect[0]:
+        return False
+    elif point[1] <rect[1]:
+        return False
+    elif point[0] > rect[2]:
+        return False
+    elif point[1] > rect[3]:
+        return False
+    return True
+
+def drawTriangles(img, subdiv):
+
+    triangles = subdiv.getTriangleList()
+    size = img.shape
+    r = (0, 0, size[1], size[0])
+
+
+    for t in triangles:
+        pt1 = (int(t[0]), int(t[1]))
+        pt2 = (int(t[2]), int(t[3]))
+        pt3 = (int(t[4]), int(t[5]))
+
+        if circumcircle(r, pt1) and circumcircle(r, pt2) and circumcircle(r, pt3):
+            print("contains")
+            #print("point1", pt1)
+            cv2.line(img, pt1, pt2, (255, 255, 255), 1, cv2.LINE_AA, 0)
+            cv2.line(img, pt2, pt3, (255, 255, 255), 1, cv2.LINE_AA, 0)
+            cv2.line(img, pt3, pt1, (255, 255, 255), 1, cv2.LINE_AA, 0)
+
+    print("Triangles")
+    #cv2.imshow("traingles",img)
+    cv2.imwrite("face.png", img)
+    cv2.waitKey(2000)
+
+
+
+
 
 
 '''LOOKING AT A SPECIFIC POINT
