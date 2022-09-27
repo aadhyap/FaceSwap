@@ -11,10 +11,13 @@ def getFace():
 
     #live video
     cap= cv2.VideoCapture("face.mp4")
+
+ 
     face_locations = []
 
     frontalFaceDetector = dlib.get_frontal_face_detector()
 
+    count = 0
     while True:
 
         ret, frame = cap.read() #frame 
@@ -23,24 +26,8 @@ def getFace():
         print(frame)
         print("RET")
         print(ret)
-        # Convert the image from BGR color (which OpenCV uses) to RGB   
-        # color (which face_recognition uses)
-        #rgb_frame = frame[:, :, ::-1]
-        # Find all the faces in the current frame of video
-
-        #small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
-        # Convert the image from BGR color (which OpenCV uses) to RGB color (which face_recognition uses)
+      
         rgb_frame = frame[:, :, ::-1]
-
-
-
-
-
-        
-
-
-        # Now the dlip shape_predictor class will take model and with the help of that, it will show 
-        
 
 
         #img= cv2.imread(rgb_frame)
@@ -120,7 +107,8 @@ def getFace():
         subdiv = cv2.Subdiv2D(rect);
 
         triangle(rect, points, subdiv)
-        drawTriangles(rgb_frame, subdiv)
+        count += 1
+        drawTriangles(rgb_frame, subdiv, count)
 
 
 
@@ -148,6 +136,10 @@ def overlay(startpoint, endpoint, landmarks, gray):
         if(n != startpoint):
             gray = cv2.line(gray, start_point, end_point, color, thickness)
         start_point = (x, y)
+
+
+    landmarkPoints = np.array(points, np.int32)
+
     return points
 
    
@@ -171,6 +163,7 @@ def triangle(image, fiducials, subdiv):
     for p in triangles:
     
 
+
         pt1 = [p[0], p[1]]
         pt2 = [p[2], p[3]]
         pt3 = [p[4], p[5]]
@@ -178,6 +171,15 @@ def triangle(image, fiducials, subdiv):
         allpoints.append(pt1)
         allpoints.append(pt2)
         allpoints.append(pt3)
+
+        compute(pt1, pt2, pt3)
+
+
+
+
+
+        
+
 
         if circumcircle(image, pt1) and circumcircle(image, pt2) and circumcircle(image, pt3):
             
@@ -193,8 +195,9 @@ def triangle(image, fiducials, subdiv):
     
 
     return triangle
-#check the circumcircle of the three point triangle if it has  another point
 
+    
+#check the circumcircle of the three point triangle if it has  another point
 def circumcircle(rect, point): 
     if point[0] < rect[0]:
         return False
@@ -206,7 +209,18 @@ def circumcircle(rect, point):
         return False
     return True
 
-def drawTriangles(img, subdiv):
+
+def compute(pt1, pt2, pt3, x, y):
+
+    #destination
+    B = [[pt1[0], pt2[0], pt3[0]], [pt1[1], pt2[1], pt3[1]], [1, 1, 1]]
+    point = [x, y]
+
+
+
+
+
+def drawTriangles(img, subdiv, count):
 
     triangles = subdiv.getTriangleList()
     size = img.shape
@@ -227,7 +241,7 @@ def drawTriangles(img, subdiv):
 
     print("Triangles")
     #cv2.imshow("traingles",img)
-    cv2.imwrite("face.png", img)
+    cv2.imwrite("face" + str(count) + ".png", img)
     cv2.waitKey(2000)
 
 
