@@ -18,27 +18,25 @@ def getFace():
 
 
 
-    width = int(img.shape[1] * scale_percent / 100)
-    height = int(img.shape[0] * scale_percent / 100)
+    width = 900
+    height = 900
     dim = (width, height)
      
     # resize image
-    resized = cv2.resize(img, dim, interpolation = cv2.INTER_AREA)
+    image1= cv2.resize(image1, dim, interpolation = cv2.INTER_AREA)
+    image2= cv2.resize(image2, dim, interpolation = cv2.INTER_AREA)
+    cv2.imshow("after resize",image1)
+    cv2.waitKey(1000)
 
  
     face_locations = []
 
-    frontalFaceDetector = dlib.get_frontal_face_detector()
+    
 
     count = 0
-    while True:
+    #while True:
 
         #ret, frame = cap.read() #frame 
-
-        print("FRAME")
-        print(frame)
-        print("RET")
-        print(ret)
       
         #rgb_frame = frame[:, :, ::-1]
 
@@ -49,83 +47,106 @@ def getFace():
         #gray=cv2.cvtColor(rgb_frame, cv2.COLOR_BGR2GRAY)
         
         #live video
-        #rgb_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_BGR2RGB)
+        
+
+    rgb_frame = image1
+    rgb_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_BGR2RGB)
 
         #gray = rgb_frame
 
 
-        rgb_frame = image1
 
+    points, square = getLandmarks(rgb_frame)
+    rgb_frame= drawSquare(rgb_frame, square)
         
 
+    
+    #cv2.imshow("landmarks", rgb_frame)
 
-        allFaces = frontalFaceDetector(rgb_frame, 0)
-        
+    #cv2.waitKey(100)
 
-        for face in allFaces:
-          x1=face.left()
-          y1=face.top()
-          x2=face.right()
-          y2=face.bottom()
-        # Drawing a rectangle around the face
-          #cv2.rectangle(rgb_frame, (x1,y1), (x2,y2),(0,255,0),3)
-        #cv2_imshow(img)
+    print("POINTS")
+
+    print(points)
 
 
 
-        faceLandmarkDetector = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
-        landmarks = faceLandmarkDetector(rgb_frame, face)
+    image = rgb_frame
+    size = image.shape
+    rect = (0, 0, size[1], size[0])
+    subdiv = cv2.Subdiv2D(rect);
 
-        points = []
+    indexpoints = triangle(rect, points, subdiv)
+    count += 1
+    drawTriangles(rgb_frame, subdiv, count)
 
 
-            # jaw, ear to ear
-        points += overlay(0, 17, landmarks, rgb_frame)
-     
-        # left eyebrow
-        points += overlay(17, 22, landmarks, rgb_frame)
-     
-        # right eyebrow
-        points += overlay(22, 27, landmarks, rgb_frame)
-     
-        # line on top of nose
-        points += overlay(27, 31, landmarks, rgb_frame)
-     
-        # bottom part of the nose
-        points += overlay(31, 36, landmarks, rgb_frame)
-     
-        # left eye
-        points += overlay(36, 42, landmarks, rgb_frame)
-     
-        # right eye
-        points += overlay(42, 48, landmarks, rgb_frame)
-     
-        # outer part of the lips
-        points += overlay(48, 60, landmarks, rgb_frame)
-     
-        # inner part of the lips
-        points += overlay(60, 68, landmarks, rgb_frame)
-            
-        
-        #cv2.imshow("landmarks", rgb_frame)
+    dest = image2
+    dest = cv2.cvtColor(dest, cv2.COLOR_BGR2RGB)
 
-        #cv2.waitKey(100)
-
-        print("POINTS")
-
-        print(points)
+    points2, square2 = getLandmarks(dest)
+    image2 = drawSquare(dest, square2)
 
 
 
-        image = rgb_frame
-        size = image.shape
-        rect = (0, 0, size[1], size[0])
-        subdiv = cv2.Subdiv2D(rect);
+    triangleDestination(image2, indexpoints, points2, square2)
 
-        triangle(rect, points, subdiv)
-        count += 1
-        drawTriangles(rgb_frame, subdiv, count)
 
+
+
+
+
+def getLandmarks(rgb_frame):
+
+    frontalFaceDetector = dlib.get_frontal_face_detector()
+    allFaces = frontalFaceDetector(rgb_frame, 0)
+
+    for face in allFaces:
+      x1=face.left()
+      y1=face.top()
+      x2=face.right()
+      y2=face.bottom()
+
+    square = [x1, y1, x2, y2]
+
+
+    # Drawing a rectangle around the face
+
+
+    faceLandmarkDetector = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
+    landmarks = faceLandmarkDetector(rgb_frame, face)
+
+    points = []
+
+
+        # jaw, ear to ear
+    points += overlay(0, 17, landmarks, rgb_frame)
+ 
+    # left eyebrow
+    points += overlay(17, 22, landmarks, rgb_frame)
+ 
+    # right eyebrow
+    points += overlay(22, 27, landmarks, rgb_frame)
+ 
+    # line on top of nose
+    points += overlay(27, 31, landmarks, rgb_frame)
+ 
+    # bottom part of the nose
+    points += overlay(31, 36, landmarks, rgb_frame)
+ 
+    # left eye
+    points += overlay(36, 42, landmarks, rgb_frame)
+ 
+    # right eye
+    points += overlay(42, 48, landmarks, rgb_frame)
+ 
+    # outer part of the lips
+    points += overlay(48, 60, landmarks, rgb_frame)
+ 
+    # inner part of the lips
+    points += overlay(60, 68, landmarks, rgb_frame)
+
+    return points, square
 
 
 
@@ -160,6 +181,11 @@ def overlay(startpoint, endpoint, landmarks, gray):
 
    
 
+
+def drawSquare(image, points):
+    image = cv2.rectangle(image, (points[0], points[1]), (points[2], points[3]), (255, 0, 0), 2)
+    return image
+
 def triangle(image, fiducials, subdiv):
     
     for points in fiducials:
@@ -188,7 +214,7 @@ def triangle(image, fiducials, subdiv):
         allpoints.append(pt2)
         allpoints.append(pt3)
 
-        compute(pt1, pt2, pt3)
+        #compute(pt1, pt2, pt3)
 
         if circumcircle(image, pt1) and circumcircle(image, pt2) and circumcircle(image, pt3):
             
@@ -200,13 +226,64 @@ def triangle(image, fiducials, subdiv):
             if len(ind) == 3:
                 triangle.append((ind[0], ind[1], ind[2]))
 
-        print("TRIANGLES")
-        print(triangle)
+    print("TRIANGLES")
+    print(triangles)
 
-     
-    
 
-    return triangle
+    indexTriangle = []
+    for t in triangles:
+        index1 = findIndexpoint(fiducials, t[0], t[1])
+        index2 = findIndexpoint(fiducials, t[2], t[3])
+        index3 = findIndexpoint(fiducials, t[4], t[5])
+        indexTriangle.append([index1, index2, index3])
+        print("Triangle ")
+        print(t)
+        print("groundtruth")
+        print(fiducials[index1])
+        print(fiducials[index2])
+        print(fiducials[index3])
+
+
+
+    return indexTriangle
+
+
+
+def findIndexpoint(points, x,y):
+    print("POINTS")
+    print(points)
+    for p in range(len(points)):
+        if (x == points[p][0] and y == points[p][1]):
+            return p
+
+
+def triangleDestination(img, indexTriangle, points2, square):
+    size = img.shape
+    r = (0, 0, size[1], size[0])
+
+    print("INDEX TRIANGLE")
+    print(indexTriangle)
+
+    for t in indexTriangle:
+        pt1 = (points2[t[0]][0], points2[t[0]][1])
+        pt2 = (points2[t[1]][0], points2[t[1]][1])
+        pt3 = (points2[t[2]][0], points2[t[2]][1])
+
+        if circumcircle(r, pt1) and circumcircle(r, pt2) and circumcircle(r, pt3):
+       
+            #print("point1", pt1)
+            cv2.line(img, pt1, pt2, (255, 255, 255), 1, cv2.LINE_AA, 0)
+            cv2.line(img, pt2, pt3, (255, 255, 255), 1, cv2.LINE_AA, 0)
+            cv2.line(img, pt3, pt1, (255, 255, 255), 1, cv2.LINE_AA, 0)
+
+   
+    #cv2.imshow("traingles",img)
+    cv2.imwrite("nitinFace" + ".png", img)
+    cv2.waitKey(2000)
+
+
+
+
 
     
 #check the circumcircle of the three point triangle if it has  another point
@@ -245,13 +322,13 @@ def drawTriangles(img, subdiv, count):
         pt3 = (int(t[4]), int(t[5]))
 
         if circumcircle(r, pt1) and circumcircle(r, pt2) and circumcircle(r, pt3):
-            print("contains")
+       
             #print("point1", pt1)
             cv2.line(img, pt1, pt2, (255, 255, 255), 1, cv2.LINE_AA, 0)
             cv2.line(img, pt2, pt3, (255, 255, 255), 1, cv2.LINE_AA, 0)
             cv2.line(img, pt3, pt1, (255, 255, 255), 1, cv2.LINE_AA, 0)
 
-    print("Triangles")
+   
     #cv2.imshow("traingles",img)
     cv2.imwrite("face" + str(count) + ".png", img)
     cv2.waitKey(2000)
