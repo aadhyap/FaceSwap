@@ -3,14 +3,27 @@ import cv2
 import dlib
 import numpy as np
 
-
+#TODO Create triangles on another image
 
 #Gets box coordinates of face
 def getFace():
-    print("started")
-
+   
     #live video
-    cap= cv2.VideoCapture("face.mp4")
+    #cap= cv2.VideoCapture("face.mp4")
+
+
+    image1 = cv2.imread("me.png")
+    image2 = cv2.imread("nithin.png")
+
+
+
+
+    width = int(img.shape[1] * scale_percent / 100)
+    height = int(img.shape[0] * scale_percent / 100)
+    dim = (width, height)
+     
+    # resize image
+    resized = cv2.resize(img, dim, interpolation = cv2.INTER_AREA)
 
  
     face_locations = []
@@ -20,25 +33,28 @@ def getFace():
     count = 0
     while True:
 
-        ret, frame = cap.read() #frame 
+        #ret, frame = cap.read() #frame 
 
         print("FRAME")
         print(frame)
         print("RET")
         print(ret)
       
-        rgb_frame = frame[:, :, ::-1]
+        #rgb_frame = frame[:, :, ::-1]
 
 
         #img= cv2.imread(rgb_frame)
         #cv2.imshow('frame',rgb_frame)
         #cv2.waitKey(1000)
         #gray=cv2.cvtColor(rgb_frame, cv2.COLOR_BGR2GRAY)
-        rgb_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_BGR2RGB)
-        print("RGB FRAME _____________")
-        print(rgb_frame)
+        
+        #live video
+        #rgb_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_BGR2RGB)
 
         #gray = rgb_frame
+
+
+        rgb_frame = image1
 
         
 
@@ -174,13 +190,6 @@ def triangle(image, fiducials, subdiv):
 
         compute(pt1, pt2, pt3)
 
-
-
-
-
-        
-
-
         if circumcircle(image, pt1) and circumcircle(image, pt2) and circumcircle(image, pt3):
             
             ind = []
@@ -190,6 +199,9 @@ def triangle(image, fiducials, subdiv):
                         ind.append(k)
             if len(ind) == 3:
                 triangle.append((ind[0], ind[1], ind[2]))
+
+        print("TRIANGLES")
+        print(triangle)
 
      
     
