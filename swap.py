@@ -16,8 +16,6 @@ def getFace():
     image2 = cv2.imread("nithin.png")
 
 
-
-
     width = 900
     height = 900
     dim = (width, height)
@@ -65,9 +63,9 @@ def getFace():
 
     #cv2.waitKey(100)
 
-    print("POINTS")
+    #print("POINTS")
 
-    print(points)
+    #print(points)
 
 
 
@@ -76,9 +74,9 @@ def getFace():
     rect = (0, 0, size[1], size[0])
     subdiv = cv2.Subdiv2D(rect);
 
-    indexpoints = triangle(rect, points, subdiv)
+    indexpoints, sourceTri = triangle(rect, points, subdiv) #sourceTri is dictionary of all the triangles
     count += 1
-    drawTriangles(rgb_frame, subdiv, count)
+    image1, newsource = drawTriangles(image, sourceTri)
 
 
     dest = image2
@@ -89,7 +87,16 @@ def getFace():
 
 
 
-    triangleDestination(image2, indexpoints, points2, square2)
+    destTriangles, dictTri = triangleDestination(image2, indexpoints, points2, square2) #dictTri is the destination of all the triangles in the other image
+
+
+
+
+    #start masking
+    allMatrices =  makebMat(newsource)
+    correspondance(image, allMatrices, subdiv, square)
+
+
 
 
 
@@ -108,6 +115,8 @@ def getLandmarks(rgb_frame):
       y2=face.bottom()
 
     square = [x1, y1, x2, y2]
+    print("SQUARE ")
+    print(square)
 
 
     # Drawing a rectangle around the face
@@ -199,9 +208,14 @@ def triangle(image, fiducials, subdiv):
     allpoints = []
 
 
+    sourceTri = {}
 
 
 
+
+
+
+    count = 1
     for p in triangles:
     
 
@@ -214,6 +228,7 @@ def triangle(image, fiducials, subdiv):
         allpoints.append(pt2)
         allpoints.append(pt3)
 
+
         #compute(pt1, pt2, pt3)
 
         if circumcircle(image, pt1) and circumcircle(image, pt2) and circumcircle(image, pt3):
@@ -223,12 +238,17 @@ def triangle(image, fiducials, subdiv):
                 for k in range(0, len(fiducials)):
                     if abs(allpoints[j][0] - fiducials[k][0]) < 1.0 and abs(allpoints[j][1] - fiducials[k][1]) < 1.0:
                         ind.append(k)
+            tri = [pt1, pt2, pt3]
+            sourceTri[count] = tri
+            count += 1
             if len(ind) == 3:
+                tri = [ind[0], ind[1], ind[2]]
                 triangle.append((ind[0], ind[1], ind[2]))
+                
 
-    print("TRIANGLES")
-    print(triangles)
 
+
+    
 
     indexTriangle = []
     for t in triangles:
@@ -236,22 +256,16 @@ def triangle(image, fiducials, subdiv):
         index2 = findIndexpoint(fiducials, t[2], t[3])
         index3 = findIndexpoint(fiducials, t[4], t[5])
         indexTriangle.append([index1, index2, index3])
-        print("Triangle ")
-        print(t)
-        print("groundtruth")
-        print(fiducials[index1])
-        print(fiducials[index2])
-        print(fiducials[index3])
+      
 
 
-
-    return indexTriangle
+    return indexTriangle, sourceTri
 
 
 
 def findIndexpoint(points, x,y):
-    print("POINTS")
-    print(points)
+    #print("POINTS")
+    #print(points)
     for p in range(len(points)):
         if (x == points[p][0] and y == points[p][1]):
             return p
@@ -260,14 +274,31 @@ def findIndexpoint(points, x,y):
 def triangleDestination(img, indexTriangle, points2, square):
     size = img.shape
     r = (0, 0, size[1], size[0])
+    
+    dictTri = {}
 
-    print("INDEX TRIANGLE")
-    print(indexTriangle)
 
+
+    #print("INDEX TRIANGLE")
+   # print(indexTriangle)
+
+
+    count = 1
     for t in indexTriangle:
-        pt1 = (points2[t[0]][0], points2[t[0]][1])
+        destTriangles = []
+        pt1 = (points2[t[0]][0], points2[t[0]][1]) #indexes 
         pt2 = (points2[t[1]][0], points2[t[1]][1])
         pt3 = (points2[t[2]][0], points2[t[2]][1])
+
+        destTriangles = [pt1, pt2, pt3]
+
+        
+
+        dictTri[count] = destTriangles
+        count += 1
+        
+      
+
 
         if circumcircle(r, pt1) and circumcircle(r, pt2) and circumcircle(r, pt3):
        
@@ -280,6 +311,8 @@ def triangleDestination(img, indexTriangle, points2, square):
     #cv2.imshow("traingles",img)
     cv2.imwrite("nitinFace" + ".png", img)
     cv2.waitKey(2000)
+
+    return destTriangles, dictTri
 
 
 
@@ -301,6 +334,10 @@ def circumcircle(rect, point):
 
 def compute(pt1, pt2, pt3, x, y):
 
+    print("point ", pt1[0])
+    print("point ", pt2[0])
+
+
     #destination
     B = [[pt1[0], pt2[0], pt3[0]], [pt1[1], pt2[1], pt3[1]], [1, 1, 1]]
     point = [x, y]
@@ -309,29 +346,216 @@ def compute(pt1, pt2, pt3, x, y):
 
 
 
-def drawTriangles(img, subdiv, count):
+def drawTriangles(img, triangles):
 
-    triangles = subdiv.getTriangleList()
+
+
+    sourceTri = {}
     size = img.shape
     r = (0, 0, size[1], size[0])
 
 
-    for t in triangles:
-        pt1 = (int(t[0]), int(t[1]))
-        pt2 = (int(t[2]), int(t[3]))
-        pt3 = (int(t[4]), int(t[5]))
+    count = 1
+    s = 1
+    for i in range(1,len(triangles)):
+        t = triangles[i]
+        print("Triangle")
+        print(t)
+        pt1 = t[0]
+        pt2 = t[1]
+        pt3 = t[2]
 
+        print("Source " + str(count), [pt1, pt2, pt3])
+
+        
         if circumcircle(r, pt1) and circumcircle(r, pt2) and circumcircle(r, pt3):
        
             #print("point1", pt1)
-            cv2.line(img, pt1, pt2, (255, 255, 255), 1, cv2.LINE_AA, 0)
-            cv2.line(img, pt2, pt3, (255, 255, 255), 1, cv2.LINE_AA, 0)
-            cv2.line(img, pt3, pt1, (255, 255, 255), 1, cv2.LINE_AA, 0)
+
+
+            pt1 = [ int(np.float32(pt1[0])), int(np.float32(pt1[1]))]
+            pt2 = [ int(np.float32(pt2[0])), int(np.float32(pt2[1]))]
+            pt3 = [int(np.float32(pt3[0])), int(np.float32(pt3[1]))]
+
+            if(pt1[0] == 349 and pt1[1] == 456 and pt2[0] == 336 and pt2[1] == 412 and pt3[0] == 367 and pt3[1] == 439):
+                print("I GOT HERE")
+
+
+                cv2.line(img, (pt1[0], pt1[1]), (pt2[0], pt2[1]), (0, 0, 255), 1, cv2.LINE_AA, 0)
+                cv2.line(img, (pt2[0], pt2[1]), (pt3[0], pt3[1] ) , (0, 0, 255), 1, cv2.LINE_AA, 0)
+                cv2.line(img, (pt3[0], pt3[1]), (pt1[0], pt1[1]), (0, 0, 255), 1, cv2.LINE_AA, 0)
+                cv2.imwrite("box1" + ".png", img)
+
+            else:
+
+                cv2.line(img, (pt1[0], pt1[1]), (pt2[0], pt2[1]), (255, 255, 255), 1, cv2.LINE_AA, 0)
+                cv2.line(img, (pt2[0], pt2[1]), (pt3[0], pt3[1] ) , (255, 255, 255), 1, cv2.LINE_AA, 0)
+                cv2.line(img, (pt3[0], pt3[1]), (pt1[0], pt1[1]), (255, 255, 255), 1, cv2.LINE_AA, 0)
+
+
+
+
+
+            sourceTri[count] = [pt1, pt2, pt3]
+
+        count += 1
+        s += 1
+
+
+
 
    
     #cv2.imshow("traingles",img)
-    cv2.imwrite("face" + str(count) + ".png", img)
+    cv2.imwrite("face" + str(s) + ".png", img)
     cv2.waitKey(2000)
+
+    return img, sourceTri
+
+
+def InTriangle(points, allMatrices, img):
+    #print("POINT CHECKING ", points)
+    count = 1
+    for i in range(len(allMatrices)):
+        matrix = allMatrices[count]
+
+        print("MATRIX ", i+1)
+        print(matrix)
+
+        x = [matrix[0][0], matrix[0][1], matrix[0][2]]
+        print("X")
+        print(x)
+
+        y = [matrix[1][0], matrix[1][1], matrix[1][2]]
+        print("Y")
+        print(y)
+        topleftx = np.min(x)
+        toplefty = np.min(y)
+
+
+        botrightx = np.max(x)
+        botlefty = np.max(y)
+
+
+
+
+
+
+        xx, yy = np.meshgrid(range(int(topleftx), int(botrightx)), range(int(toplefty), int(botlefty)))
+        xx = xx.flatten()
+        yy = yy.flatten()
+        ones = np.ones(xx.shape, dtype = int )
+        boundingbox = [topleftx, toplefty, botrightx, botlefty]
+        print("boundingbox ", boundingbox)
+        #image = cv2.rectangle(img, (int(boundingbox[0]), int(boundingbox[1])), int((boundingbox[2]), int(boundingbox[3])), (255, 0, 0), 2)
+        pt1 = int(np.float32(boundingbox[0]))
+        pt2 = int(np.float32(boundingbox[1]))
+        pt3 = int(np.float32(boundingbox[2]))
+        pt4 = int(np.float32(boundingbox[3]))
+
+
+        image = cv2.rectangle(img, (pt3, pt4), (pt1, pt2), (255, 0, 0), 2)
+
+
+        points = [points[0], points[1], 1]
+        #print("Matrix ", count)
+        
+        #print(allMatrices[i])
+        Bmat = np.linalg.inv(np.array(matrix))
+        cv2.imwrite("imagebox.png", img)
+
+        alpha, beta, gamma = np.dot(np.linalg.pinv(Bmat),  boundingbox)
+
+
+        print("ALPHA ", alpha)
+        print("BETA ", beta)
+        print("GAMMA ", gamma)
+        count += 1
+
+
+
+
+        if(alpha > 0.1 and alpha < 1.1 and beta > 0.1 and beta < 1.1 and gamma > 0.1 and gamma < 1.1):
+            pt1 = (allMatrices[i][0][0], allMatrices[i][1][0])
+            pt2 = (allMatrices[i][0][1], allMatrices[i][1][1])
+            pt3 = (allMatrices[i][0][2], allMatrices[i][1][2])
+            #cv2.line(img, pt1, pt2, (255, 0, 0), 1, cv2.LINE_AA, 0)
+            #cv2.line(img, pt2, pt3, (255, 0, 0), 1, cv2.LINE_AA, 0)
+            #cv2.line(img, pt2, pt3, (255, 0, 0), 1, cv2.LINE_AA, 0)
+            cv2.circle(img, (points[0], points[1]), 6, (255, 0, 0), -1)
+            cv2.imwrite("imagedrawn.png", img)
+            
+            return alpha, beta, gamma, i
+
+    return None
+
+
+
+
+def makebMat(trianglepoints):
+    allMatrices = {}
+    count = 1
+    for corners in trianglepoints:
+
+        #print("corners " + str(count),  corners)
+        corners = trianglepoints[count]
+      
+        Bmat = [[corners[0][0], corners[1][0], corners[2][0]], [corners[0][1], corners[1][1], corners[2][1]], [1, 1, 1]]
+        allMatrices[count] = Bmat
+        count += 1
+    return allMatrices
+
+
+
+
+
+
+
+#goes through image points and checks what each point is 
+'''
+Hashmap : points -> alpha, beta, gama
+'''
+def correspondance(img, allMatrices, subdiv, square):
+
+   
+
+    count = 1
+
+    print("Square x lower ", square[0])
+    print("Square x upper", square[2])
+
+    print("Square y lower", square[1])
+    print("Square y upper", square[3])
+    for x in range(square[0], square[2]):
+        for y in range(square[1], square[3]):
+            if(InTriangle([x,y], allMatrices, img) != None):
+                alpha, beta, gamma, index = InTriangle([x,y], allMatrices, img)
+            else:
+                #print("NONE for count ", count)
+                count += 1
+             #print("POINT ", str(x), str(y))
+
+
+
+
+
+             
+
+        
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
 
 
 
