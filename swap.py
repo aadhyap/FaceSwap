@@ -607,6 +607,8 @@ def swap(image2, allMatrices, image, sourceTri, destTriangles, square):
         interp3 = interpolate.interp2d(width, height, image[:, :, 2], kind='linear') 
         # print(pt1d, pt2d, pt3d) 
 
+
+#https://codereview.stackexchange.com/questions/213533/inverse-mapping-with-bilinear-interpolation-on-an-image
         for pts, x, y in zip(insideTriangle, warped_ptS[:, 0], warped_ptS[:, 1]): 
              x -= xS 
              y -= yS 
