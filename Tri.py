@@ -12,10 +12,14 @@ def getFace():
    
     #live video
     cap= cv2.VideoCapture("./Data/Data2.mp4")
+    frame_width = int(cap.get(3))
+    frame_height = int(cap.get(4))
+    size = (frame_width, frame_height)
 
 
     #image1 = cv2.imread("jackie.png")
-    image2 = cv2.imread("./images/jackie.png")
+    image2 = cv2.imread("./images/badbunny.png")
+
 
 
     width = 900
@@ -42,7 +46,14 @@ def getFace():
 
     pic = 1
     count = 0
+    result = cv2.VideoWriter('./Data/DataOutput.mp4',
+                             cv2.VideoWriter_fourcc(*'mp4v'),
+                             10, size)
+
+
+
     while cap.isOpened():
+
 
         ret, frame = cap.read() #frame 
       
@@ -51,8 +62,10 @@ def getFace():
         width = 900
         height = 900
         dim = (width, height)
+        #ima = cv2.imread("./images/jackie.png")
         image1= cv2.resize(rgb_frame, dim, interpolation = cv2.INTER_AREA)
         copy1 = image1.copy()
+
 
 
         #img= cv2.imread(rgb_frame)
@@ -94,33 +107,41 @@ def getFace():
         count += 1
         image1, newsource = drawTriangles(image, sourceTri)
 
-
         
-        
-
-
 
         destTriangles, dictTri = triangleDestination(image2, indexpoints, points2, square2) #dictTri is the destination of all the triangles in the other image
 
         allMatrices =  makebMat(newsource)
 
 
-
+        
         img1, warpedimg = swap(copy1, allMatrices, copy2, sourceTri, dictTri, square2)
-        cv2.imwrite("img" + str(pic) + ".png", img1)
-        pic += 1
-        #cv2.imwrite("warpedimg.png", warpedimg)
- 
-        #cv2.imshow("Frame", img1)
-        #cv2.waitKey(20)
 
-   
+        mask, box = Mask(copy1, points)
+        x,y,w,h = box
+        cx, cy = (2*x+w) //2, (2*y+ h) //2
+        WarpedFace = cv2.seamlessClone(np.uint16(img1), copy1, mask, tuple([cx,cy]), cv2.NORMAL_CLONE)
+
+
+        #cv2.imwrite("img" + str(pic) + ".png", WarpedFace)
+        pic += 1
+        cv2.imwrite("warped" +str(pic) + ".png", WarpedFace)
+ 
+    
+        cv2.imshow('Swap - TPS', WarpedFace)
+        cv2.waitKey(200)
+        result.write(np.uint8(WarpedFace))
 
     cv2.destroyAllWindows()
     cap.release()
 
 
-
+def Mask(Face2,facemarks2):
+    mask = np.zeros_like(Face2)
+    hull = cv2.convexHull(np.array(facemarks2))
+    mask = cv2.fillConvexPoly(mask,hull, (255, 255, 255))
+    box = cv2.boundingRect(np.float32([hull.squeeze()]))
+    return mask, box
 
 def getLandmarks(rgb_frame):
 
@@ -520,8 +541,8 @@ def swap(image2, allMatrices, image, sourceTri, destTriangles, square):
     
     img = image2.copy()
     finalImage = np.zeros((img.shape), np.uint8)
-    xbox = square[0]-380
-    ybox = square[1]-200
+    xbox = square[0]-300
+    ybox = square[1]-400
     
 
     all_abg, all_TrianglePts = InTriangle(allMatrices, image, sourceTri)
