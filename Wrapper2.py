@@ -13,7 +13,7 @@ def main():
     frame_width = int(video.get(3))
     frame_height = int(video.get(4))
     size = (frame_width, frame_height)
-    result = cv2.VideoWriter('./Data/Data2Output.mp4',
+    result = cv2.VideoWriter('./Data/Data2Outpu3.mp4',
                              cv2.VideoWriter_fourcc(*'mp4v'),
                              10, size)
 
@@ -44,14 +44,12 @@ def main():
 
         box1, box2 = square_box[0], square_box[1]
 
-        WarpedFace, cara1, cara2 = FaceSwap(frame, box1, box2, predictor)
+        WarpedFace, face1, face2 = FaceSwap(frame, box1, box2, predictor)
         initiation = False
 
         print('Video generation...')
-        cv2.imwrite('./Results/face1.jpg', cara1)
-        #cv2.waitKey()
-        cv2.imwrite('./Results/face2.jpg', cara2)
-        #cv2.waitKey()
+        cv2.imwrite('./Data/face1.jpg', face1)
+        cv2.imwrite('./Data/face2.jpg', face2)
         cv2.imshow('Swap - TPS', WarpedFace)
         result.write(np.uint8(WarpedFace))
         if cv2.waitKey(1) & 0xFF == ord('s'):
@@ -149,16 +147,15 @@ def warpfaces(face1, face2, weights, face_markers_2):
 
     R = np.sqrt(t1 + t2)
 
-    # U = np.square(R) * np.log(np.square(R))
     U = np.square(R) * np.log(R)
     U[R == 0] = 0
 
-    MX = w_x[0:68, 0].T
-    Ux = MX * U
+    W_x = w_x[0:68, 0].T
+    Ux = W_x * U
     Ux_sum = np.sum(Ux, axis = 1).reshape(-1,1)
 
-    MY = w_y[0:68, 0].T
-    Uy = MY * U
+    W_y = w_y[0:68, 0].T
+    Uy = W_y * U
     Uy_sum = np.sum(Uy, axis = 1).reshape(-1,1)
 
     actual_points = actual_points + np.hstack((Ux_sum, Uy_sum))
@@ -174,8 +171,6 @@ def warpfaces(face1, face2, weights, face_markers_2):
     warped_face[Yi.ravel(), Xi.ravel()] = face1[Y, X]
 
     return np.uint8(warped_face)
-
-
 
 def FaceSwap(frame, box1, box2, predictor):
     WarpedFace_tmp, _,_ = Swap(frame, frame, box1, box2, predictor)
@@ -208,12 +203,12 @@ def Swap(Face1,Face2, box1,box2, predictor):
     WarpedFace = cv2.seamlessClone(np.uint16(WarpedFace), Face2, mask, tuple([cx,cy]), cv2.NORMAL_CLONE)
 
 
-    Face1_print = drawMarkers(Face1, facemarks1, BoundingBox1)
-    Face2_print = drawMarkers(Face2, facemarks2, BoundingBox2)
+    Face1_print = markers(Face1, facemarks1, BoundingBox1)
+    Face2_print = markers(Face2, facemarks2, BoundingBox2)
 
     return WarpedFace, Face1_print, Face2_print
 
-def drawMarkers(Face1, facemarks, box):
+def markers(Face1, facemarks, box):
 
     Face = Face1.copy()
     #(x,y,w,h) = box
