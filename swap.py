@@ -11,11 +11,11 @@ import pry
 def getFace():
    
     #live video
-    #cap= cv2.VideoCapture("face.mp4")
+    cap= cv2.VideoCapture("./Data/Data2.mp4")
 
 
-    image1 = cv2.imread("jackie.png")
-    image2 = cv2.imread("kobe.png")
+    #image1 = cv2.imread("jackie.png")
+    image2 = cv2.imread("./images/jackie.png")
 
 
     width = 900
@@ -23,26 +23,40 @@ def getFace():
     dim = (width, height)
      
     # resize image
-    image1= cv2.resize(image1, dim, interpolation = cv2.INTER_AREA)
     image2= cv2.resize(image2, dim, interpolation = cv2.INTER_AREA)
     copy2 = image2.copy()
-    copy1 = image1.copy()
+    
   
 
  
     face_locations = []
 
+
+    dest = image2
+        #dest = cv2.cvtColor(dest, cv2.COLOR_BGR2RGB)
+
+    points2, square2 = getLandmarks(dest)
+    image2 = drawSquare(dest, square2, 1)
+
     
 
+    pic = 1
     count = 0
-    #while True:
+    while cap.isOpened():
 
-        #ret, frame = cap.read() #frame 
+        ret, frame = cap.read() #frame 
       
-        #rgb_frame = frame[:, :, ::-1]
+        rgb_frame = frame
+
+        width = 900
+        height = 900
+        dim = (width, height)
+        image1= cv2.resize(rgb_frame, dim, interpolation = cv2.INTER_AREA)
+        copy1 = image1.copy()
 
 
         #img= cv2.imread(rgb_frame)
+
         #cv2.imshow('frame',rgb_frame)
         #cv2.waitKey(1000)
         #gray=cv2.cvtColor(rgb_frame, cv2.COLOR_BGR2GRAY)
@@ -50,65 +64,60 @@ def getFace():
         #live video
         
 
-    rgb_frame = image1
-    #rgb_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_BGR2RGB)
+        rgb_frame = image1
+        #rgb_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_BGR2RGB)
 
-        #gray = rgb_frame
+            #gray = rgb_frame
 
 
-
-    points, square = getLandmarks(rgb_frame)
-    rgb_frame= drawSquare(rgb_frame, square, 0)
-
-   
         
 
-    
-    #cv2.imshow("landmarks", rgb_frame)
+        points, square = getLandmarks(rgb_frame)
+        if(pic == 1):
+            prevpts = points
+            prevsq = square
+        if(pic > 1 and points == None):
+            points = prevpts
+            square = prevsq
+        rgb_frame= drawSquare(rgb_frame, square, 0)
 
-    #cv2.waitKey(100)
-
-    #print("POINTS")
-
-    #print(points)
-
-
-
-    image = rgb_frame
-    size = image.shape
-    rect = (0, 0, size[1], size[0])
-    subdiv = cv2.Subdiv2D(rect);
-
-    indexpoints, sourceTri = triangle(rect, points, subdiv) #sourceTri is dictionary of all the triangles
-    count += 1
-    image1, newsource = drawTriangles(image, sourceTri)
+       
+        
 
 
-    dest = image2
-    #dest = cv2.cvtColor(dest, cv2.COLOR_BGR2RGB)
+        image = rgb_frame
+        size = image.shape
+        rect = (0, 0, size[1], size[0])
+        subdiv = cv2.Subdiv2D(rect);
 
-    points2, square2 = getLandmarks(dest)
-    image2 = drawSquare(dest, square2, 1)
-    
+        indexpoints, sourceTri = triangle(rect, points, subdiv) #sourceTri is dictionary of all the triangles
+        count += 1
+        image1, newsource = drawTriangles(image, sourceTri)
+
+
+        
+        
 
 
 
-    destTriangles, dictTri = triangleDestination(image2, indexpoints, points2, square2) #dictTri is the destination of all the triangles in the other image
-  
+        destTriangles, dictTri = triangleDestination(image2, indexpoints, points2, square2) #dictTri is the destination of all the triangles in the other image
+
+        allMatrices =  makebMat(newsource)
 
 
 
+        img1, warpedimg = swap(copy1, allMatrices, copy2, sourceTri, dictTri, square2)
+        cv2.imwrite("img" + str(pic) + ".png", img1)
+        pic += 1
+        #cv2.imwrite("warpedimg.png", warpedimg)
+ 
+        #cv2.imshow("Frame", img1)
+        #cv2.waitKey(20)
 
-    #start masking
-    allMatrices =  makebMat(newsource)
-    #correspondance(image, allMatrices, square, dictTri, image2, sourceTri)
+   
 
-
-    cv2.imshow("image2", image2)
-    img1, warpedimg = swap(copy1, allMatrices, copy2, sourceTri, dictTri, square2)
-    cv2.imwrite("img.png", img1)
-    cv2.imwrite("warpedimg.png", warpedimg)
-    #swap(image2, allMatrices, image, sourceTri, destTriangles, all_abg, img1bound):
+    cv2.destroyAllWindows()
+    cap.release()
 
 
 
@@ -118,15 +127,18 @@ def getLandmarks(rgb_frame):
     frontalFaceDetector = dlib.get_frontal_face_detector()
     allFaces = frontalFaceDetector(rgb_frame, 0)
 
+    if(len(allFaces) == 0):
+        return None, None
+
     for face in allFaces:
       x1=face.left()
+
       y1=face.top()
       x2=face.right()
       y2=face.bottom()
 
     square = [x1, y1, x2, y2]
-    print("SQUARE w")
-    print(square)
+    
 
 
     # Drawing a rectangle around the face
@@ -207,7 +219,7 @@ def drawSquare(image, points, zero):
     
     if(zero > 0):
         #image = cv2.rectangle(image, (points[0], points[1]), (points[2]+20, points[3]+30), (255, 0, 0), 2)
-        print(points[0], points[1]), (points[2], points[3])
+    
         for i in range(len(image)):
             for j in range(len(image)):
                 if(j >= points[0] and i >=points[1] and j <= points[2]and i<=points[3]):
@@ -318,19 +330,6 @@ def triangleDestination(img, indexTriangle, points2, square):
         
       
 
-
-        #if circumcircle(r, pt1) and circumcircle(r, pt2) and circumcircle(r, pt3):
-       
-            #print("point1", pt1)
-            #cv2.line(img, pt1, pt2, (255, 255, 255), 1, cv2.LINE_AA, 0)
-            #cv2.line(img, pt2, pt3, (255, 255, 255), 1, cv2.LINE_AA, 0)
-            #cv2.line(img, pt3, pt1, (255, 255, 255), 1, cv2.LINE_AA, 0)
-
-   
-    #cv2.imshow("traingles",img)
-    #cv2.imwrite("nitinFace" + ".png", img)
-    #cv2.waitKey(2000)
-
     return destTriangles, dictTri
 
 
@@ -378,7 +377,7 @@ def drawTriangles(img, triangles):
         
         if circumcircle(r, pt1) and circumcircle(r, pt2) and circumcircle(r, pt3):
        
-            #print("point1", pt1)
+    
 
 
             pt1 = [int(np.float32(pt1[0])), int(np.float32(pt1[1]))]
@@ -411,37 +410,27 @@ def InTriangle(allMatrices, img, sourceTri):
 
     all_abg = {}
     all_TrianglePts = {}
-    print("length of matrices ", len(allMatrices))
     for i in range(len(allMatrices)):
         matrix = allMatrices[count]
 
-        print("MATRIX ", i+1)
-        print(matrix)
+       
 
-        x = [matrix[0][0], matrix[0][1], matrix[0][2]]
-        print("X")
-        print(x)
-
-        y = [matrix[1][0], matrix[1][1], matrix[1][2]]
-        print("Y")
-        print(y)
-        topleftx = np.min(x)
-        toplefty = np.min(y)
+        x, y= [matrix[0][0], matrix[0][1], matrix[0][2]], [matrix[1][0], matrix[1][1], matrix[1][2]]
+  
+        tlx, tly = np.min(x), np.min(y)
 
 
-        botrightx = np.max(x)
-        botlefty = np.max(y)
+        brx, bly = np.max(x), np.max(y)
 
 
 
-        xx, yy = np.meshgrid(range(int(topleftx), int(botrightx)), range(int(toplefty), int(botlefty)))
-        xx = xx.flatten()
-        yy = yy.flatten()
+        xx, yy = np.meshgrid(range(int(tlx), int(brx)), range(int(tly), int(bly)))
+        xx, yy = xx.flatten(), yy.flatten()
         ones = np.ones(xx.shape, dtype = int )
 
 
 
-        boundingbox = [topleftx, toplefty, botrightx, botlefty]
+        boundingbox = [tlx, tly, brx, bly]
 
         #image = cv2.rectangle(img, (int(boundingbox[0]), int(boundingbox[1])), int((boundingbox[2]), int(boundingbox[3])), (255, 0, 0), 2)
         pt1 = int(np.float32(boundingbox[0]))
@@ -449,36 +438,21 @@ def InTriangle(allMatrices, img, sourceTri):
         pt3 = int(np.float32(boundingbox[2]))
         pt4 = int(np.float32(boundingbox[3]))
 
+        box = np.vstack((xx, yy, ones))
+        alpha, beta, gamma = np.dot(np.linalg.pinv(matrix),  box)
+        a = np.where(np.logical_and(alpha > -0.1, alpha <1.1))[0]
+        b = np.where(np.logical_and(beta > -0.1, beta <1.1))[0]
+        g = np.where(np.logical_and(alpha + beta + gamma > -0.1, alpha + beta + gamma < 1.1))[0]
 
 
+        valid_al_beta = np.intersect1d(a, b)
+        inside_pts_loc = np.intersect1d(valid_al_beta, g)
+        box = box.T
+        insidePts = box[inside_pts_loc]
+        totalAs,totalBs, totalGs = alpha[inside_pts_loc], beta[inside_pts_loc], gamma[inside_pts_loc]
 
-
-        #image = cv2.rectangle(img, (pt3, pt4), (pt1, pt2), (255, 0, 0), 2)
-       
-        cv2.imwrite("imagebox.png", img)
-        boundingboxpts = np.vstack((xx, yy, ones))
-        alpha, beta, gamma = np.dot(np.linalg.pinv(matrix),  boundingboxpts)
-        valid_alpha = np.where(np.logical_and(alpha > -0.1, alpha <1.1))[0]
-        valid_beta = np.where(np.logical_and(beta > -0.1, beta <1.1))[0]
-        valid_gamma = np.where(np.logical_and(alpha + beta + gamma > -0.1, alpha + beta + gamma < 1.1))[0]
-
-
-        valid_al_beta = np.intersect1d(valid_alpha, valid_beta)
-        inside_pts_loc = np.intersect1d(valid_al_beta, valid_gamma)
-        boundingboxpts = boundingboxpts.T
-        pts_in_triangle = boundingboxpts[inside_pts_loc]
-        all_alpha = alpha[inside_pts_loc]
-        all_beta = beta[inside_pts_loc]
-        all_gamma = gamma[inside_pts_loc]
-
-
-        #print("ALPHA ", all_alpha)
-        #print("BETA ", all_beta)
-        #print("GAMMA ", gamma)
-        
-
-        triangle = [all_alpha, all_beta, all_gamma]
-        all_TrianglePts[count] = pts_in_triangle
+        triangle = [totalAs, totalBs, totalGs]
+        all_TrianglePts[count] = insidePts
 
         all_abg[count] = triangle
         count += 1
@@ -498,7 +472,7 @@ def makebMat(trianglepoints):
     count = 1
     for corners in trianglepoints:
 
-        #print("corners " + str(count),  corners)
+     
         corners = trianglepoints[count]
       
         Bmat = np.array([[corners[0][0], corners[1][0], corners[2][0]], [corners[0][1], corners[1][1], corners[2][1]], [1, 1, 1]])
@@ -522,15 +496,10 @@ def correspondance(img1, allMatrices, square, destTriangles, img2, sourceTri):
 
     count = 1
 
-    print("Square x lower ", square[0])
-    print("Square x upper", square[2])
 
-    print("Square y lower", square[1])
-    print("Square y upper", square[3])
 
     all_abg = InTriangle(allMatrices, img1, sourceTri)
-    #print("ALL ABG")
-    #print(all_abg)
+
 
 
     finalpoints = {}
@@ -550,8 +519,11 @@ def correspondance(img1, allMatrices, square, destTriangles, img2, sourceTri):
 def swap(image2, allMatrices, image, sourceTri, destTriangles, square):
     
     img = image2.copy()
-    warpedImgS = np.zeros((img.shape), np.uint8)
-    xS, yS, wS, hS = square[0]-300, square[1]-100, square[2]+200, square[3]+900
+    finalImage = np.zeros((img.shape), np.uint8)
+    xbox = square[0]-380
+    ybox = square[1]-200
+    
+
     all_abg, all_TrianglePts = InTriangle(allMatrices, image, sourceTri)
   
 
@@ -574,8 +546,6 @@ def swap(image2, allMatrices, image, sourceTri, destTriangles, square):
 
         insideTriangle = all_TrianglePts[i]
         insideTriangle = insideTriangle[:, 0:2] 
-        if np.shape(insideTriangle)[0] == 0: 
-             continue
 
 
         destTriangle = destTriangles[i]
@@ -586,38 +556,37 @@ def swap(image2, allMatrices, image, sourceTri, destTriangles, square):
         aMatCoord = np.vstack((alpha, beta))
         #pry()
         aMatCoord = np.vstack((aMatCoord, gamma)) 
-        warped_ptS = np.dot(aMat, aMatCoord) 
+        transform = np.dot(aMat, aMatCoord) 
 
 
-        warped_ptS = warped_ptS.T 
-        warped_ptS[:, 0] = warped_ptS[:, 0]/warped_ptS[:, 2] 
-        warped_ptS[:, 1] = warped_ptS[:, 1]/warped_ptS[:, 2] 
-        warped_ptS = warped_ptS[:, 0:2] 
+
+        transform = transform.T 
+        transform[:, 0] = transform[:, 0]/transform[:, 2] 
+        transform[:, 1] = transform[:, 1]/transform[:, 2] 
+        transform = transform[:, 0:2] 
   
         width = range(0, image.shape[1]) 
         height = range(0, image.shape[0]) 
-        
-
-        # print(image1.shape) 
-        # https://scipython.com/book/chapter-8-scipy/examples/scipyinterpolateinterp2d/ 
-        interp1 = interpolate.interp2d(width, height, image[:, :, 0], kind='linear') 
+    
+        change1 = interpolate.interp2d(width, height, image[:, :, 0], kind='linear') 
         #print(x) 
-        interp2 = interpolate.interp2d(width, height, image[:, :, 1], kind='linear') 
+        change2 = interpolate.interp2d(width, height, image[:, :, 1], kind='linear') 
         #print(len(y)) 
-        interp3 = interpolate.interp2d(width, height, image[:, :, 2], kind='linear') 
+        change3 = interpolate.interp2d(width, height, image[:, :, 2], kind='linear') 
         # print(pt1d, pt2d, pt3d) 
 
-        for pts, x, y in zip(insideTriangle, warped_ptS[:, 0], warped_ptS[:, 1]): 
-             x -= xS 
-             y -= yS 
-             edge1 = interp1(x, y) 
-             edge2 = interp2(x, y) 
-             edge3 = interp3(x, y) 
+        for pts, x, y in zip(insideTriangle, transform[:, 0], transform[:, 1]): 
+             x -= xbox 
+             y -= ybox
+             corner1 = change1(x, y) 
+             corner2 = change2(x, y) 
+             corner3 = change3(x, y) 
   
-             img[pts[1], pts[0]] = (edge1, edge2, edge3) 
-             warpedImgS[pts[1], pts[0]] = (edge1, edge2, edge3) 
+             img[pts[1], pts[0]] = (corner1, corner2, corner3) 
+             finalImage[pts[1], pts[0]] = (corner1, corner2, corner3) 
 
-    return img, warpedImgS
+
+    return img, finalImage
 
 
         
@@ -649,77 +618,7 @@ def PixelPosition(Amat, matrix):
 
 
 
-        #print("x ", x) 
-        #print("y ", y)
-
-
-
-
     return points
 
 
-
-
-
-
-
-
-    '''
-    for x in range(square[0], square[2]):
-        for y in range(square[1], square[3]):
-            if(InTriangle([x,y], allMatrices, img) != None):
-                
-            else:
-                #print("NONE for count ", count)
-                count += 1
-             #print("POINT ", str(x), str(y))
-
-             '''
-
-
-
-
-
-             
-
-        
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-'''LOOKING AT A SPECIFIC POINT
-
-x=landmarks.part(31).x
-y=landmarks.part(31).y
-# Drawing a circle
-cv2.circle(img, (x, y), 6, (0, 0, 255), -1)
-cv2_imshow(img)
-
-
-'''
-
-#cv2.imshow('Video', frame)
-        
-# Wait for Enter key to stop
-#if cv2.waitKey(25) == 13:
-#break
-
-#def drawPoints():
 getFace()
